@@ -53,7 +53,7 @@ export default function Dashboard() {
 
   const rates = calculateShopRate()
   const paidQuotes = quotes.filter(q => q.status === 'paid')
-  const thisPeri odSales = paidQuotes.reduce((sum, q) => sum + (q.total_price || 0), 0)
+  const thisMonthSales = paidQuotes.reduce((sum, q) => sum + (q.total_price || 0), 0)
 
   const getStatusColor = (status) => {
     switch (status) {
