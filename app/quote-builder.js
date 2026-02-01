@@ -350,10 +350,10 @@ export default function QuoteBuilder() {
           {/* Timing & Hats */}
           <Card>
             <CardHeader>
-              <CardTitle>Timing + Hats</CardTitle>
+              <CardTitle>{formData.quote_type === 'patch_only' ? 'Timing' : 'Timing + Hats'}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className={`grid gap-4 ${formData.quote_type === 'patch_only' ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
                 <div className="space-y-2">
                   <Label>Machine min/sheet</Label>
                   <Input
@@ -370,34 +370,44 @@ export default function QuoteBuilder() {
                     onChange={(e) => updateField('cleanup_minutes_per_sheet', parseFloat(e.target.value))}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Apply min/hat</Label>
-                  <Input
-                    type="number"
-                    step="0.5"
-                    value={formData.apply_minutes_per_hat}
-                    onChange={(e) => updateField('apply_minutes_per_hat', parseFloat(e.target.value))}
-                  />
-                </div>
+                {formData.quote_type === 'patch_press' && (
+                  <div className="space-y-2">
+                    <Label>Apply min/hat</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={formData.apply_minutes_per_hat}
+                      onChange={(e) => updateField('apply_minutes_per_hat', parseFloat(e.target.value))}
+                    />
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label>Hats Supplied By</Label>
-                <Tabs value={formData.hats_supplied_by} onValueChange={(v) => updateField('hats_supplied_by', v)}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="customer">Customer</TabsTrigger>
-                    <TabsTrigger value="us">Us</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
+              {formData.quote_type === 'patch_press' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Hats Supplied By</Label>
+                    <Tabs value={formData.hats_supplied_by} onValueChange={(v) => updateField('hats_supplied_by', v)}>
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="customer">Customer</TabsTrigger>
+                        <TabsTrigger value="us">Us</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
 
-              {formData.hats_supplied_by === 'us' && (
-                <div className="space-y-2">
-                  <Label>Hat Unit Cost ($)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.hat_unit_cost}
+                  {formData.hats_supplied_by === 'us' && (
+                    <div className="space-y-2">
+                      <Label>Hat Unit Cost ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.hat_unit_cost}
+                        onChange={(e) => updateField('hat_unit_cost', parseFloat(e.target.value))}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
                     onChange={(e) => updateField('hat_unit_cost', parseFloat(e.target.value))}
                   />
                 </div>
