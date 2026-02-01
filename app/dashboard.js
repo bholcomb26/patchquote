@@ -71,8 +71,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold">Dashboard</h2>
-        <p className="text-gray-600">Your quotes, customers, and quick actions.</p>
+        <h2 className="text-3xl font-bold">Overview</h2>
+        <p className="text-gray-600">Your quotes, stats, and quick actions.</p>
       </div>
 
       {/* Stats Cards */}
