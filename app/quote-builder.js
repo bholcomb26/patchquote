@@ -179,38 +179,43 @@ export default function QuoteBuilder() {
   const selectedMaterial = materials.find(m => m.id === formData.patch_material_id)
   const unitsLabel = formData.quote_type === 'patch_only' ? 'patch' : 'hat'
   
-  // Calculate active tier and upsell
-  const getActiveTier = () => {
-    if (!results?.tier_prices_json) return null
+  // Get active tier from results (new profit ladder model)
+  const activeTierKey = results?.active_tier_key
+  
+  // Calculate upsell message
+  const getUpsellMessage = () => {
+    if (!results?.tier_prices_json || !activeTierKey) return null
     
     const tierKeys = Object.keys(results.tier_prices_json)
+      .filter(k => k !== '1-23')
       .map(Number)
       .sort((a, b) => a - b)
     
-    let activeTier = tierKeys[0]
-    let nextTier = null
-    
-    for (let i = 0; i < tierKeys.length; i++) {
-      if (formData.qty >= tierKeys[i]) {
-        activeTier = tierKeys[i]
-        nextTier = tierKeys[i + 1] || null
-      }
+    // If in 1-23 tier, upsell to 24+
+    if (activeTierKey === '1-23' && formData.qty < 24) {
+      const qtyNeeded = 24 - formData.qty
+      const currentPrice = results.tier_prices_json['1-23'].unit
+      const nextPrice = results.tier_prices_json[24]?.unit || 0
+      const savings = (currentPrice - nextPrice).toFixed(2)
+      return `Add ${qtyNeeded} more to reach 24+ tier and save $${savings} per ${unitsLabel}!`
     }
     
-    let upsellMessage = null
+    // Find next tier
+    const currentTier = Number(activeTierKey)
+    const nextTier = tierKeys.find(t => t > currentTier)
+    
     if (nextTier && formData.qty < nextTier) {
       const qtyNeeded = nextTier - formData.qty
-      const currentPrice = results.tier_prices_json[activeTier].unit
+      const currentPrice = results.tier_prices_json[activeTierKey].unit
       const nextPrice = results.tier_prices_json[nextTier].unit
       const savings = (currentPrice - nextPrice).toFixed(2)
-      
-      upsellMessage = `Add ${qtyNeeded} more to reach next tier and save $${savings} per ${unitsLabel}!`
+      return `Add ${qtyNeeded} more to reach ${nextTier}+ tier and save $${savings} per ${unitsLabel}!`
     }
     
-    return { activeTier, nextTier, upsellMessage }
+    return null
   }
   
-  const tierInfo = results ? getActiveTier() : null
+  const upsellMessage = results ? getUpsellMessage() : null
 
   return (
     <div className="space-y-6">
