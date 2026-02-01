@@ -313,8 +313,16 @@ export async function POST(request) {
         return handleCORS(NextResponse.json({ error: 'Material not found' }, { status: 400 }))
       }
 
-      // Calculate all fields
-      const calculated = calculateCompleteQuote(body, shopSettings, material)
+      // Calculate all fields based on quote type
+      const quoteType = body.quote_type || 'patch_press'
+      let calculated
+      
+      if (quoteType === 'patch_only') {
+        const { calculatePatchOnlyQuote } = await import('../../../lib/calculations.js')
+        calculated = calculatePatchOnlyQuote(body, shopSettings, material)
+      } else {
+        calculated = calculateCompleteQuote(body, shopSettings, material)
+      }
 
       // If just calculating, return results
       if (path === 'quotes/calculate') {
