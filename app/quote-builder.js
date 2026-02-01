@@ -43,9 +43,6 @@ export default function QuoteBuilder() {
     proof_minutes: 5,
     setup_minutes: 5,
     packing_minutes: 5,
-    profit_anchor: 3.00, // Target profit at 24+ tier
-    setup_fee: 30, // Setup fee (waived at 12+)
-    profit_multipliers: [1.00, 0.92, 0.85, 0.80, 0.72, 0.65],
     turnaround_text: '5–7 business days',
     shipping_charge: 0,
     tier_quantities: [24, 48, 96, 144, 384, 768]
