@@ -22,6 +22,7 @@ export default function QuoteBuilder() {
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
+    quote_type: localStorage.getItem('default_quote_type') || 'patch_press',
     customer_id: null,
     qty: 144,
     patch_material_id: '',
