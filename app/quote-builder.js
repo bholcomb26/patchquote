@@ -555,9 +555,21 @@ export default function QuoteBuilder() {
                     <div className="text-sm text-gray-600">Unit Price</div>
                     <div className="text-3xl font-bold text-purple-600">${results.unit_price}/{unitsLabel}</div>
                   </div>
-                  <div>
-                    <div className="text-sm text-gray-600">Total Price</div>
-                    <div className="text-3xl font-bold text-blue-600">${results.total_price}</div>
+                  <div className="pt-4 border-t space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="font-semibold">${results.subtotal ? results.subtotal.toFixed(2) : (results.unit_price * formData.qty).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Setup Fee:</span>
+                      <span className={`font-semibold ${results.setup_fee === 0 ? 'text-green-600' : ''}`}>
+                        {results.setup_fee === 0 ? 'Waived' : `$${results.setup_fee.toFixed(2)}`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-base font-bold pt-2 border-t">
+                      <span className="text-gray-900">Total:</span>
+                      <span className="text-blue-600">${results.total_price}</span>
+                    </div>
                   </div>
                   <div className="pt-4 border-t space-y-2">
                     <div className="flex justify-between text-sm">
