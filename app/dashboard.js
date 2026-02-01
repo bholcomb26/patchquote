@@ -171,16 +171,17 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
-                    <div className="text-right">
-                      <div className="font-bold">${quote.total_price || 0}</div>
-                      <div className="text-sm text-gray-600">${quote.unit_price || 0}/hat</div>
+                        <div className="text-right">
+                          <div className="font-bold">${quote.total_price || 0}</div>
+                          <div className="text-sm text-gray-600">${quote.unit_price || 0}/{unitLabel}</div>
+                        </div>
+                        <Badge className={getStatusColor(quote.status)}>
+                          {quote.status}
+                        </Badge>
+                      </div>
                     </div>
-                    <Badge className={getStatusColor(quote.status)}>
-                      {quote.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                  )
+                })}
             </div>
           )}
         </CardContent>
