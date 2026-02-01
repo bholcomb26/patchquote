@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [shopSettings, setShopSettings] = useState(null)
   const [quotes, setQuotes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [quoteTypeFilter, setQuoteTypeFilter] = useState('all')
   const { toast } = useToast()
 
   useEffect(() => {
