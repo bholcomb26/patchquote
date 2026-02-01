@@ -233,7 +233,7 @@ export default function QuoteBuilder() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Quantity</Label>
+                  <Label>Quantity ({formData.quote_type === 'patch_only' ? 'patches' : 'hats'})</Label>
                   <Input
                     type="number"
                     value={formData.qty}
