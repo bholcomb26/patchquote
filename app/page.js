@@ -18,7 +18,6 @@ import ShopSettings from './shop-settings'
 import PatchMaterials from './patch-materials'
 import Customers from './customers-page'
 import QuoteBuilder from './quote-builder'
-import FinishedHatPricing from './finished-hat-pricing'
 import ProfitFirst from './profit-first'
 
 export default function App() {
