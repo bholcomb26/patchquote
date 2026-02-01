@@ -544,7 +544,7 @@ export default function QuoteBuilder() {
                 <CardContent className="space-y-4">
                   <div>
                     <div className="text-sm text-gray-600">Unit Price</div>
-                    <div className="text-3xl font-bold text-purple-600">${results.unit_price}/hat</div>
+                    <div className="text-3xl font-bold text-purple-600">${results.unit_price}/{unitsLabel}</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">Total Price</div>
@@ -560,10 +560,17 @@ export default function QuoteBuilder() {
                       <span className="font-semibold">{results.effective_yield.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">True Cost/Hat:</span>
+                      <span className="text-gray-600">True Cost/{unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1)}:</span>
                       <span className="font-semibold">${results.true_cost_per_hat.toFixed(2)}</span>
                     </div>
                   </div>
+                  
+                  {/* Upsell Message */}
+                  {tierInfo?.upsellMessage && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800 font-medium">💡 {tierInfo.upsellMessage}</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
