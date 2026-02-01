@@ -225,9 +225,8 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-1 overflow-x-auto py-2">
             {[
-              { id: 'dashboard', label: 'Dashboard', icon: DollarSign },
-              { id: 'quote-builder', label: 'New Quote', icon: Plus },
-              { id: 'finished-hats', label: 'Finished Hats', icon: Package },
+              { id: 'dashboard', label: 'Overview', icon: DollarSign },
+              { id: 'quote-builder', label: 'Quote Builder', icon: Plus },
               { id: 'customers', label: 'Customers', icon: Users },
               { id: 'materials', label: 'Materials', icon: Package },
               { id: 'shop-settings', label: 'Shop Settings', icon: Settings },
@@ -254,7 +253,6 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {currentPage === 'dashboard' && <Dashboard />}
         {currentPage === 'quote-builder' && <QuoteBuilder />}
-        {currentPage === 'finished-hats' && <FinishedHatPricing />}
         {currentPage === 'customers' && <Customers />}
         {currentPage === 'materials' && <PatchMaterials />}
         {currentPage === 'shop-settings' && <ShopSettings />}
