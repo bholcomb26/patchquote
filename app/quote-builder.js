@@ -102,6 +102,11 @@ export default function QuoteBuilder() {
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    
+    // Save quote type preference to localStorage
+    if (field === 'quote_type') {
+      localStorage.setItem('default_quote_type', value)
+    }
   }
 
   async function handleCalculate() {
