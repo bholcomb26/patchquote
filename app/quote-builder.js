@@ -176,6 +176,40 @@ export default function QuoteBuilder() {
   }
 
   const selectedMaterial = materials.find(m => m.id === formData.patch_material_id)
+  const unitsLabel = formData.quote_type === 'patch_only' ? 'patch' : 'hat'
+  
+  // Calculate active tier and upsell
+  const getActiveTier = () => {
+    if (!results?.tier_prices_json) return null
+    
+    const tierKeys = Object.keys(results.tier_prices_json)
+      .map(Number)
+      .sort((a, b) => a - b)
+    
+    let activeTier = tierKeys[0]
+    let nextTier = null
+    
+    for (let i = 0; i < tierKeys.length; i++) {
+      if (formData.qty >= tierKeys[i]) {
+        activeTier = tierKeys[i]
+        nextTier = tierKeys[i + 1] || null
+      }
+    }
+    
+    let upsellMessage = null
+    if (nextTier && formData.qty < nextTier) {
+      const qtyNeeded = nextTier - formData.qty
+      const currentPrice = results.tier_prices_json[activeTier].unit
+      const nextPrice = results.tier_prices_json[nextTier].unit
+      const savings = (currentPrice - nextPrice).toFixed(2)
+      
+      upsellMessage = `Add ${qtyNeeded} more to reach next tier and save $${savings} per ${unitsLabel}!`
+    }
+    
+    return { activeTier, nextTier, upsellMessage }
+  }
+  
+  const tierInfo = results ? getActiveTier() : null
 
   return (
     <div className="space-y-6">
