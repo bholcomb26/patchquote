@@ -592,9 +592,9 @@ export default function QuoteBuilder() {
                   </div>
                   
                   {/* Upsell Message */}
-                  {tierInfo?.upsellMessage && (
+                  {upsellMessage && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-800 font-medium">💡 {tierInfo.upsellMessage}</p>
+                      <p className="text-sm text-green-800 font-medium">💡 {upsellMessage}</p>
                     </div>
                   )}
                 </CardContent>
