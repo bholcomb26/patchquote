@@ -117,7 +117,32 @@ export default function Dashboard() {
       {/* Recent Quotes */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Quotes</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Recent Quotes</CardTitle>
+            <div className="flex space-x-2">
+              <Button
+                size="sm"
+                variant={quoteTypeFilter === 'all' ? 'default' : 'outline'}
+                onClick={() => setQuoteTypeFilter('all')}
+              >
+                All
+              </Button>
+              <Button
+                size="sm"
+                variant={quoteTypeFilter === 'patch_only' ? 'default' : 'outline'}
+                onClick={() => setQuoteTypeFilter('patch_only')}
+              >
+                Patch Only
+              </Button>
+              <Button
+                size="sm"
+                variant={quoteTypeFilter === 'patch_press' ? 'default' : 'outline'}
+                onClick={() => setQuoteTypeFilter('patch_press')}
+              >
+                Patch + Press
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {quotes.length === 0 ? (
@@ -127,17 +152,25 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {quotes.slice(0, 10).map(quote => (
-                <div key={quote.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex-1">
-                    <div className="font-medium">
-                      {quote.qty} patch hats • {quote.material?.name} {quote.patch_width_input}×{quote.patch_height_input}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {quote.customer?.name || 'No customer'} • {new Date(quote.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
+              {quotes
+                .filter(quote => quoteTypeFilter === 'all' || quote.quote_type === quoteTypeFilter)
+                .slice(0, 10)
+                .map(quote => {
+                  const quoteType = quote.quote_type || 'patch_press'
+                  const unitsLabel = quoteType === 'patch_only' ? 'patches' : 'patch hats'
+                  const unitLabel = quoteType === 'patch_only' ? 'patch' : 'hat'
+                  
+                  return (
+                    <div key={quote.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex-1">
+                        <div className="font-medium">
+                          {quote.qty} {unitsLabel} • {quote.material?.name} {quote.patch_width_input}×{quote.patch_height_input}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {quote.customer?.name || 'No customer'} • {new Date(quote.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
                     <div className="text-right">
                       <div className="font-bold">${quote.total_price || 0}</div>
                       <div className="text-sm text-gray-600">${quote.unit_price || 0}/hat</div>
