@@ -581,15 +581,30 @@ export default function QuoteBuilder() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {Object.entries(results.tier_prices_json || {}).map(([qty, prices]) => (
-                      <div key={qty} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <span className="font-medium">{qty}+</span>
-                        <div className="text-right">
-                          <div className="font-bold">${prices.unit}/hat</div>
-                          <div className="text-sm text-gray-600">${prices.total} total</div>
+                    {Object.entries(results.tier_prices_json || {}).map(([qty, prices]) => {
+                      const isActive = tierInfo?.activeTier === Number(qty)
+                      return (
+                        <div 
+                          key={qty} 
+                          className={`flex justify-between items-center p-3 rounded-lg transition-all ${
+                            isActive 
+                              ? 'bg-purple-100 border-2 border-purple-400 shadow-md' 
+                              : 'bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">{qty}+</span>
+                            {isActive && (
+                              <Badge className="bg-purple-600 text-white text-xs">Active</Badge>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold">${prices.unit}/{unitsLabel}</div>
+                            <div className="text-sm text-gray-600">${prices.total} total</div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </CardContent>
               </Card>
