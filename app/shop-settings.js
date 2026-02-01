@@ -296,6 +296,185 @@ export default function ShopSettings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Pricing System Configuration */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Pricing System</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Default Pricing Mode</Label>
+              <Select 
+                value={settings.default_pricing_mode || 'profit'} 
+                onValueChange={(v) => updateField('default_pricing_mode', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="profit">Profit-Based (Recalculates cost at each tier)</SelectItem>
+                  <SelectItem value="fixed">Fixed (Set exact prices per tier)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                {settings.default_pricing_mode === 'fixed' 
+                  ? 'Fixed mode uses pre-set prices you define below.' 
+                  : 'Profit mode calculates cost at each tier, then adds profit × multiplier.'}
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Setup Fee Default</Label>
+                <Input
+                  type="number"
+                  value={settings.setup_fee_default || 30}
+                  onChange={(e) => updateField('setup_fee_default', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Setup Waive at Qty</Label>
+                <Input
+                  type="number"
+                  value={settings.setup_waive_qty || 12}
+                  onChange={(e) => updateField('setup_waive_qty', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Min Tier Step-Down ($)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={settings.min_tier_stepdown || 0.05}
+                  onChange={(e) => updateField('min_tier_stepdown', e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pricing Ladders */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Pricing Ladders</CardTitle>
+            <p className="text-sm text-gray-600">Configure pricing for each quote type and tier</p>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="patch-press">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="patch-press">Patch + Press</TabsTrigger>
+                <TabsTrigger value="patch-only">Patch Only</TabsTrigger>
+              </TabsList>
+
+              {/* Patch + Press Ladders */}
+              <TabsContent value="patch-press" className="space-y-6">
+                {settings.default_pricing_mode === 'fixed' ? (
+                  <div>
+                    <Label className="text-base font-semibold mb-4 block">Fixed Prices ($/unit)</Label>
+                    <div className="grid grid-cols-6 gap-3">
+                      {['24', '48', '96', '144', '384', '768'].map(tier => (
+                        <div key={tier} className="space-y-2">
+                          <Label className="text-sm">{tier}+</Label>
+                          <Input
+                            type="number"
+                            step="0.50"
+                            value={settings.fixed_ladder_patch_press?.[tier] || 0}
+                            onChange={(e) => updateLadderField('fixed_ladder_patch_press', tier, e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">These are the exact $/hat prices shown in quotes</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Default Profit Anchor ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.50"
+                        value={settings.default_profit_anchor_patch_press || 3.00}
+                        onChange={(e) => updateField('default_profit_anchor_patch_press', e.target.value)}
+                      />
+                      <p className="text-xs text-gray-500">Target profit at 24+ tier (users can override per quote)</p>
+                    </div>
+                    <div>
+                      <Label className="text-base font-semibold mb-4 block">Profit Multipliers</Label>
+                      <div className="grid grid-cols-6 gap-3">
+                        {['24', '48', '96', '144', '384', '768'].map(tier => (
+                          <div key={tier} className="space-y-2">
+                            <Label className="text-sm">{tier}+</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={settings.profit_multipliers_patch_press?.[tier] || 1.00}
+                              onChange={(e) => updateLadderField('profit_multipliers_patch_press', tier, e.target.value)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Profit = anchor × multiplier. Lower multipliers give volume discounts.</p>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Patch Only Ladders */}
+              <TabsContent value="patch-only" className="space-y-6">
+                {settings.default_pricing_mode === 'fixed' ? (
+                  <div>
+                    <Label className="text-base font-semibold mb-4 block">Fixed Prices ($/patch)</Label>
+                    <div className="grid grid-cols-6 gap-3">
+                      {['24', '48', '96', '144', '384', '768'].map(tier => (
+                        <div key={tier} className="space-y-2">
+                          <Label className="text-sm">{tier}+</Label>
+                          <Input
+                            type="number"
+                            step="0.50"
+                            value={settings.fixed_ladder_patch_only?.[tier] || 0}
+                            onChange={(e) => updateLadderField('fixed_ladder_patch_only', tier, e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">These are the exact $/patch prices shown in quotes</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Default Profit Anchor ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.50"
+                        value={settings.default_profit_anchor_patch_only || 2.00}
+                        onChange={(e) => updateField('default_profit_anchor_patch_only', e.target.value)}
+                      />
+                      <p className="text-xs text-gray-500">Target profit at 24+ tier (users can override per quote)</p>
+                    </div>
+                    <div>
+                      <Label className="text-base font-semibold mb-4 block">Profit Multipliers</Label>
+                      <div className="grid grid-cols-6 gap-3">
+                        {['24', '48', '96', '144', '384', '768'].map(tier => (
+                          <div key={tier} className="space-y-2">
+                            <Label className="text-sm">{tier}+</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={settings.profit_multipliers_patch_only?.[tier] || 1.00}
+                              onChange={(e) => updateLadderField('profit_multipliers_patch_only', tier, e.target.value)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Profit = anchor × multiplier. Lower multipliers give volume discounts.</p>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
