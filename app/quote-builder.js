@@ -442,10 +442,6 @@ export default function QuoteBuilder() {
                   )}
                 </>
               )}
-                    onChange={(e) => updateField('hat_unit_cost', parseFloat(e.target.value))}
-                  />
-                </div>
-              )}
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
