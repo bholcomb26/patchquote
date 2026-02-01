@@ -4,7 +4,8 @@ import {
   calculateCompleteQuote,
   calculateFinishedHatQuote,
   calculateProfitFirstAllocations,
-  calculateShopRates
+  calculateShopRates,
+  calculatePatchOnlyQuote
 } from '../../../lib/calculations'
 
 // CORS helper
