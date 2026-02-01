@@ -478,45 +478,9 @@ export default function QuoteBuilder() {
           {/* Pricing */}
           <Card>
             <CardHeader>
-              <CardTitle>Pricing</CardTitle>
+              <CardTitle>Delivery & Options</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-base font-semibold">Target Profit per Hat (at 24+)</Label>
-                <div className="flex space-x-2 mb-2">
-                  {[2, 3, 4, 5].map(preset => (
-                    <Button
-                      key={preset}
-                      type="button"
-                      size="sm"
-                      variant={formData.profit_anchor === preset ? 'default' : 'outline'}
-                      onClick={() => updateField('profit_anchor', preset)}
-                    >
-                      ${preset}
-                    </Button>
-                  ))}
-                </div>
-                <Input
-                  type="number"
-                  step="0.50"
-                  value={formData.profit_anchor}
-                  onChange={(e) => updateField('profit_anchor', parseFloat(e.target.value))}
-                  placeholder="3.00"
-                />
-                <p className="text-xs text-gray-500">Your target profit on the 24+ tier. Lower tiers get discounts automatically.</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Setup Fee</Label>
-                <Input
-                  type="number"
-                  step="5"
-                  value={formData.setup_fee}
-                  onChange={(e) => updateField('setup_fee', parseFloat(e.target.value))}
-                />
-                <p className="text-xs text-gray-500">Waived automatically when quantity ≥ 12</p>
-              </div>
-
               <div className="space-y-2">
                 <Label>Turnaround Text</Label>
                 <Input
@@ -524,6 +488,14 @@ export default function QuoteBuilder() {
                   onChange={(e) => updateField('turnaround_text', e.target.value)}
                   placeholder="5–7 business days"
                 />
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <strong>Pricing Mode:</strong> {shopSettings?.default_pricing_mode === 'fixed' ? 'Fixed Ladder' : 'Profit-Based Ladder'}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Tier pricing is automatically calculated based on your Shop Settings configuration.
+                </p>
               </div>
             </CardContent>
           </Card>
