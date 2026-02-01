@@ -319,7 +319,6 @@ export async function POST(request) {
       let calculated
       
       if (quoteType === 'patch_only') {
-        const { calculatePatchOnlyQuote } = await import('../../../lib/calculations.js')
         calculated = calculatePatchOnlyQuote(body, shopSettings, material)
       } else {
         calculated = calculateCompleteQuote(body, shopSettings, material)
