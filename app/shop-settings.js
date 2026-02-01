@@ -55,8 +55,37 @@ export default function ShopSettings() {
   }
 
   const updateField = (field, value) => {
-    setSettings(prev => ({ ...prev, [field]: parseFloat(value) || 0 }))
+    setSettings(prev => ({ ...prev, [field]: parseFloat(value) || value }))
   }
+  
+  const updateLadderField = (ladderType, tier, value) => {
+    setSettings(prev => ({
+      ...prev,
+      [ladderType]: {
+        ...prev[ladderType],
+        [tier]: parseFloat(value) || 0
+      }
+    }))
+  }
+  
+  // Initialize default pricing ladders if they don't exist
+  useEffect(() => {
+    if (settings && !settings.default_pricing_mode) {
+      setSettings(prev => ({
+        ...prev,
+        default_pricing_mode: 'profit',
+        setup_fee_default: 30,
+        setup_waive_qty: 12,
+        min_tier_stepdown: 0.05,
+        fixed_ladder_patch_press: { "24": 12.00, "48": 11.50, "96": 11.00, "144": 10.50, "384": 10.00, "768": 9.50 },
+        fixed_ladder_patch_only: { "24": 8.00, "48": 7.50, "96": 7.00, "144": 6.50, "384": 6.00, "768": 5.50 },
+        profit_multipliers_patch_press: { "24": 1.00, "48": 0.92, "96": 0.85, "144": 0.80, "384": 0.72, "768": 0.65 },
+        profit_multipliers_patch_only: { "24": 1.00, "48": 0.92, "96": 0.85, "144": 0.80, "384": 0.72, "768": 0.65 },
+        default_profit_anchor_patch_press: 3.00,
+        default_profit_anchor_patch_only: 2.00
+      }))
+    }
+  }, [settings])
 
   const calculateShopRate = () => {
     if (!settings) return { shopRate: 0, minuteRate: 0 }
