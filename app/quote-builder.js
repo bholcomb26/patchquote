@@ -184,6 +184,30 @@ export default function QuoteBuilder() {
         <p className="text-gray-600">Create patch hat quotes with auto-calculated yields and tier pricing</p>
       </div>
 
+      {/* Quote Type Toggle */}
+      <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+        <CardContent className="pt-6">
+          <Label className="text-base font-semibold mb-3 block">Quote Type</Label>
+          <Tabs value={formData.quote_type} onValueChange={(v) => updateField('quote_type', v)}>
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="patch_press">
+                <Package className="w-4 h-4 mr-2" />
+                Patch + Press
+              </TabsTrigger>
+              <TabsTrigger value="patch_only">
+                <DollarSign className="w-4 h-4 mr-2" />
+                Patch Only
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <p className="text-sm text-gray-600 mt-2">
+            {formData.quote_type === 'patch_only' 
+              ? 'Quote patches only (no hat application)' 
+              : 'Quote patches with application to hats'}
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Input Form */}
         <div className="lg:col-span-2 space-y-6">
