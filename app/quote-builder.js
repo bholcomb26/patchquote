@@ -662,6 +662,27 @@ export default function QuoteBuilder() {
                       {results.quote_phone}
                     </div>
                   </div>
+
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-semibold">Tier Pricing Only</Label>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const tierKeys = Object.keys(results.tier_prices_json).sort((a, b) => Number(a) - Number(b))
+                          const tierParts = tierKeys.map(qty => `${qty}+ $${results.tier_prices_json[qty].unit}/${unitsLabel}`)
+                          const tierText = `Tier pricing: ${tierParts.join(' | ')}. Reply APPROVED to invoice.`
+                          copyToClipboard(tierText, 'tier')
+                        }}
+                      >
+                        {copiedScript === 'tier' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    <div className="text-xs bg-blue-50 p-3 rounded border">
+                      Quick tier pricing copy for follow-ups
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
