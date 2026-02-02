@@ -514,7 +514,7 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url)
     const path = searchParams.get('path') || ''
 
-    const supabase = createSupabaseServer()
+    const supabase = await createSupabaseServer()
     const user = await getUser()
 
     if (!user) {
