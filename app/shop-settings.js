@@ -10,6 +10,9 @@ import { Save, Loader2 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
+// Tier ranges matching calculations.js
+const TIER_KEYS = ['1-23', '24-47', '48-95', '96-143', '144-287', '288-575', '576+']
+
 export default function ShopSettings() {
   const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -46,7 +49,7 @@ export default function ShopSettings() {
       if (!response.ok) throw new Error('Save failed')
 
       toast({ title: 'Settings saved successfully!' })
-      window.location.reload() // Refresh to update rates everywhere
+      window.location.reload()
     } catch (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' })
     } finally {
@@ -62,43 +65,59 @@ export default function ShopSettings() {
     setSettings(prev => ({
       ...prev,
       [ladderType]: {
-        ...prev[ladderType],
+        ...(prev[ladderType] || {}),
         [tier]: parseFloat(value) || 0
       }
     }))
   }
   
-  // Initialize default pricing ladders if they don't exist
+  // Initialize default settings if they don't exist
   useEffect(() => {
-    if (settings && !settings.default_pricing_mode) {
+    if (settings && !settings.published_ladder_patch_press) {
       setSettings(prev => ({
         ...prev,
-        default_pricing_mode: 'profit',
-        setup_fee_default: 30,
-        setup_waive_qty: 12,
-        min_tier_stepdown: 0.05,
-        fixed_ladder_patch_press: { "24": 12.00, "48": 11.50, "96": 11.00, "144": 10.50, "384": 10.00, "768": 9.50 },
-        fixed_ladder_patch_only: { "24": 8.00, "48": 7.50, "96": 7.00, "144": 6.50, "384": 6.00, "768": 5.50 },
-        profit_multipliers_patch_press: { "24": 1.00, "48": 0.92, "96": 0.85, "144": 0.80, "384": 0.72, "768": 0.65 },
-        profit_multipliers_patch_only: { "24": 1.00, "48": 0.92, "96": 0.85, "144": 0.80, "384": 0.72, "768": 0.65 },
-        default_profit_anchor_patch_press: 3.00,
-        default_profit_anchor_patch_only: 2.00
+        // Cost-based pricing defaults
+        default_pricing_method: prev.default_pricing_method || 'markup',
+        default_markup_pct: prev.default_markup_pct || 50,
+        default_margin_pct: prev.default_margin_pct || 40,
+        setup_fee_default: prev.setup_fee_default || 30,
+        setup_waive_qty: prev.setup_waive_qty || 24,
+        // Published ladders - Patch + Press
+        published_ladder_patch_press: {
+          '1-23': 15.00,
+          '24-47': 12.00,
+          '48-95': 11.00,
+          '96-143': 10.00,
+          '144-287': 9.50,
+          '288-575': 9.00,
+          '576+': 8.50
+        },
+        // Published ladders - Patch Only
+        published_ladder_patch_only: {
+          '1-23': 10.00,
+          '24-47': 8.00,
+          '48-95': 7.00,
+          '96-143': 6.50,
+          '144-287': 6.00,
+          '288-575': 5.50,
+          '576+': 5.00
+        }
       }))
     }
   }, [settings])
 
   const calculateShopRate = () => {
     if (!settings) return { shopRate: 0, minuteRate: 0 }
-    const workableHoursMonth = settings.workable_hours_per_week * 4.33
-    const billableHoursMonth = workableHoursMonth * (settings.billable_efficiency_pct / 100)
+    const workableHoursMonth = (settings.workable_hours_per_week || 40) * 4.33
+    const billableHoursMonth = workableHoursMonth * ((settings.billable_efficiency_pct || 75) / 100)
     if (billableHoursMonth === 0) return { shopRate: 0, minuteRate: 0 }
-    const requiredMonthly = settings.monthly_overhead + settings.monthly_owner_pay_goal + settings.monthly_profit_goal
+    const requiredMonthly = (settings.monthly_overhead || 0) + (settings.monthly_owner_pay_goal || 0) + (settings.monthly_profit_goal || 0)
     const shopRate = requiredMonthly / billableHoursMonth
     const minuteRate = shopRate / 60
     return { shopRate, minuteRate }
   }
 
-  if (loading) return <div>Loading...</div>
+  if (loading) return <div className="p-8 text-center">Loading...</div>
 
   const rates = calculateShopRate()
 
@@ -107,7 +126,7 @@ export default function ShopSettings() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold">Shop Settings</h2>
-          <p className="text-gray-600">Configure your shop floor rates and defaults</p>
+          <p className="text-gray-600">Configure shop rates, pricing defaults, and published price ladders</p>
         </div>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
@@ -124,11 +143,11 @@ export default function ShopSettings() {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <div className="text-sm text-gray-600">Shop Rate</div>
-              <div className="text-4xl font-bold text-purple-600">${rates.shopRate.toFixed(2)}/hr</div>
+              <div className="text-4xl font-bold text-purple-600 tabular-nums">${rates.shopRate.toFixed(2)}/hr</div>
             </div>
             <div>
               <div className="text-sm text-gray-600">Minute Rate</div>
-              <div className="text-4xl font-bold text-blue-600">${rates.minuteRate.toFixed(2)}/min</div>
+              <div className="text-4xl font-bold text-blue-600 tabular-nums">${rates.minuteRate.toFixed(2)}/min</div>
             </div>
           </div>
         </CardContent>
@@ -145,7 +164,7 @@ export default function ShopSettings() {
               <Label>Owner Pay Goal ($)</Label>
               <Input
                 type="number"
-                value={settings.monthly_owner_pay_goal}
+                value={settings?.monthly_owner_pay_goal || ''}
                 onChange={(e) => updateField('monthly_owner_pay_goal', e.target.value)}
               />
             </div>
@@ -153,7 +172,7 @@ export default function ShopSettings() {
               <Label>Profit Goal ($)</Label>
               <Input
                 type="number"
-                value={settings.monthly_profit_goal}
+                value={settings?.monthly_profit_goal || ''}
                 onChange={(e) => updateField('monthly_profit_goal', e.target.value)}
               />
             </div>
@@ -161,7 +180,7 @@ export default function ShopSettings() {
               <Label>Monthly Overhead ($)</Label>
               <Input
                 type="number"
-                value={settings.monthly_overhead}
+                value={settings?.monthly_overhead || ''}
                 onChange={(e) => updateField('monthly_overhead', e.target.value)}
               />
             </div>
@@ -178,7 +197,7 @@ export default function ShopSettings() {
               <Label>Workable Hours per Week</Label>
               <Input
                 type="number"
-                value={settings.workable_hours_per_week}
+                value={settings?.workable_hours_per_week || ''}
                 onChange={(e) => updateField('workable_hours_per_week', e.target.value)}
               />
             </div>
@@ -186,7 +205,7 @@ export default function ShopSettings() {
               <Label>Billable Efficiency (%)</Label>
               <Input
                 type="number"
-                value={settings.billable_efficiency_pct}
+                value={settings?.billable_efficiency_pct || ''}
                 onChange={(e) => updateField('billable_efficiency_pct', e.target.value)}
               />
             </div>
@@ -204,7 +223,7 @@ export default function ShopSettings() {
               <Input
                 type="number"
                 step="0.5"
-                value={settings.default_apply_minutes_per_hat}
+                value={settings?.default_apply_minutes_per_hat || ''}
                 onChange={(e) => updateField('default_apply_minutes_per_hat', e.target.value)}
               />
             </div>
@@ -212,7 +231,7 @@ export default function ShopSettings() {
               <Label>Proof Minutes</Label>
               <Input
                 type="number"
-                value={settings.default_proof_minutes}
+                value={settings?.default_proof_minutes || ''}
                 onChange={(e) => updateField('default_proof_minutes', e.target.value)}
               />
             </div>
@@ -220,7 +239,7 @@ export default function ShopSettings() {
               <Label>Setup Minutes</Label>
               <Input
                 type="number"
-                value={settings.default_setup_minutes}
+                value={settings?.default_setup_minutes || ''}
                 onChange={(e) => updateField('default_setup_minutes', e.target.value)}
               />
             </div>
@@ -228,7 +247,7 @@ export default function ShopSettings() {
               <Label>Packing Minutes</Label>
               <Input
                 type="number"
-                value={settings.default_packing_minutes}
+                value={settings?.default_packing_minutes || ''}
                 onChange={(e) => updateField('default_packing_minutes', e.target.value)}
               />
             </div>
@@ -238,7 +257,7 @@ export default function ShopSettings() {
         {/* Layout Defaults */}
         <Card>
           <CardHeader>
-            <CardTitle>Layout & Pricing Defaults</CardTitle>
+            <CardTitle>Layout & Yield Defaults</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -247,7 +266,7 @@ export default function ShopSettings() {
                 <Input
                   type="number"
                   step="0.0625"
-                  value={settings.default_gap}
+                  value={settings?.default_gap || ''}
                   onChange={(e) => updateField('default_gap', e.target.value)}
                 />
               </div>
@@ -256,7 +275,7 @@ export default function ShopSettings() {
                 <Input
                   type="number"
                   step="0.0625"
-                  value={settings.default_border}
+                  value={settings?.default_border || ''}
                   onChange={(e) => updateField('default_border', e.target.value)}
                 />
               </div>
@@ -264,7 +283,7 @@ export default function ShopSettings() {
                 <Label>Waste %</Label>
                 <Input
                   type="number"
-                  value={settings.default_waste_pct}
+                  value={settings?.default_waste_pct || ''}
                   onChange={(e) => updateField('default_waste_pct', e.target.value)}
                 />
               </div>
@@ -273,63 +292,55 @@ export default function ShopSettings() {
                 <Input
                   type="number"
                   step="0.0625"
-                  value={settings.outline_allowance}
+                  value={settings?.outline_allowance || ''}
                   onChange={(e) => updateField('outline_allowance', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Target Margin %</Label>
-                <Input
-                  type="number"
-                  value={settings.default_target_margin_pct}
-                  onChange={(e) => updateField('default_target_margin_pct', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Rush %</Label>
-                <Input
-                  type="number"
-                  value={settings.default_rush_pct}
-                  onChange={(e) => updateField('default_rush_pct', e.target.value)}
                 />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Pricing System Configuration */}
+        {/* Cost-Based Pricing Defaults */}
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Pricing System</CardTitle>
+            <CardTitle>Cost-Based Pricing Defaults</CardTitle>
+            <p className="text-sm text-gray-600">These settings control the "Wholesale" price shown in Shop View (cost + markup/margin)</p>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label className="text-base font-semibold">Default Pricing Mode</Label>
-              <Select 
-                value={settings.default_pricing_mode || 'profit'} 
-                onValueChange={(v) => updateField('default_pricing_mode', v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="profit">Profit-Based (Recalculates cost at each tier)</SelectItem>
-                  <SelectItem value="fixed">Fixed (Set exact prices per tier)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500">
-                {settings.default_pricing_mode === 'fixed' 
-                  ? 'Fixed mode uses pre-set prices you define below.' 
-                  : 'Profit mode calculates cost at each tier, then adds profit × multiplier.'}
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label>Setup Fee Default</Label>
+                <Label>Pricing Method</Label>
+                <Select 
+                  value={settings?.default_pricing_method || 'markup'} 
+                  onValueChange={(v) => updateField('default_pricing_method', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="markup">Markup %</SelectItem>
+                    <SelectItem value="margin">Margin %</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{settings?.default_pricing_method === 'margin' ? 'Default Margin %' : 'Default Markup %'}</Label>
                 <Input
                   type="number"
-                  value={settings.setup_fee_default || 30}
+                  value={settings?.default_pricing_method === 'margin' 
+                    ? (settings?.default_margin_pct || 40)
+                    : (settings?.default_markup_pct || 50)}
+                  onChange={(e) => updateField(
+                    settings?.default_pricing_method === 'margin' ? 'default_margin_pct' : 'default_markup_pct',
+                    e.target.value
+                  )}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Setup Fee Default ($)</Label>
+                <Input
+                  type="number"
+                  value={settings?.setup_fee_default || 30}
                   onChange={(e) => updateField('setup_fee_default', e.target.value)}
                 />
               </div>
@@ -337,28 +348,24 @@ export default function ShopSettings() {
                 <Label>Setup Waive at Qty</Label>
                 <Input
                   type="number"
-                  value={settings.setup_waive_qty || 12}
+                  value={settings?.setup_waive_qty || 24}
                   onChange={(e) => updateField('setup_waive_qty', e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Min Tier Step-Down ($)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={settings.min_tier_stepdown || 0.05}
-                  onChange={(e) => updateField('min_tier_stepdown', e.target.value)}
-                />
-              </div>
             </div>
+            <p className="text-xs text-gray-500">
+              {settings?.default_pricing_method === 'margin'
+                ? 'Margin: Wholesale = Cost ÷ (1 - Margin%)'
+                : 'Markup: Wholesale = Cost × (1 + Markup%)'}
+            </p>
           </CardContent>
         </Card>
 
-        {/* Pricing Ladders */}
+        {/* Published Price Ladders */}
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Pricing Ladders</CardTitle>
-            <p className="text-sm text-gray-600">Configure pricing for each quote type and tier</p>
+            <CardTitle>Published Price Ladders (Customer-Facing)</CardTitle>
+            <p className="text-sm text-gray-600">These are the fixed prices shown to customers and used in quote scripts</p>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="patch-press">
@@ -367,110 +374,48 @@ export default function ShopSettings() {
                 <TabsTrigger value="patch-only">Patch Only</TabsTrigger>
               </TabsList>
 
-              {/* Patch + Press Ladders */}
-              <TabsContent value="patch-press" className="space-y-6">
-                {settings.default_pricing_mode === 'fixed' ? (
-                  <div>
-                    <Label className="text-base font-semibold mb-4 block">Fixed Prices ($/unit)</Label>
-                    <div className="grid grid-cols-6 gap-3">
-                      {['24', '48', '96', '144', '384', '768'].map(tier => (
-                        <div key={tier} className="space-y-2">
-                          <Label className="text-sm">{tier}+</Label>
-                          <Input
-                            type="number"
-                            step="0.50"
-                            value={settings.fixed_ladder_patch_press?.[tier] || 0}
-                            onChange={(e) => updateLadderField('fixed_ladder_patch_press', tier, e.target.value)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">These are the exact $/hat prices shown in quotes</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Default Profit Anchor ($)</Label>
-                      <Input
-                        type="number"
-                        step="0.50"
-                        value={settings.default_profit_anchor_patch_press || 3.00}
-                        onChange={(e) => updateField('default_profit_anchor_patch_press', e.target.value)}
-                      />
-                      <p className="text-xs text-gray-500">Target profit at 24+ tier (users can override per quote)</p>
-                    </div>
-                    <div>
-                      <Label className="text-base font-semibold mb-4 block">Profit Multipliers</Label>
-                      <div className="grid grid-cols-6 gap-3">
-                        {['24', '48', '96', '144', '384', '768'].map(tier => (
-                          <div key={tier} className="space-y-2">
-                            <Label className="text-sm">{tier}+</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={settings.profit_multipliers_patch_press?.[tier] || 1.00}
-                              onChange={(e) => updateLadderField('profit_multipliers_patch_press', tier, e.target.value)}
-                            />
-                          </div>
-                        ))}
+              {/* Patch + Press Ladder */}
+              <TabsContent value="patch-press" className="space-y-4">
+                <div className="grid grid-cols-7 gap-2">
+                  {TIER_KEYS.map(tier => (
+                    <div key={tier} className="space-y-1">
+                      <Label className="text-xs font-semibold text-center block">{tier}</Label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                        <Input
+                          type="number"
+                          step="0.25"
+                          className="pl-5 text-center tabular-nums"
+                          value={settings?.published_ladder_patch_press?.[tier] || ''}
+                          onChange={(e) => updateLadderField('published_ladder_patch_press', tier, e.target.value)}
+                        />
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">Profit = anchor × multiplier. Lower multipliers give volume discounts.</p>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">Price per hat (patch + application)</p>
               </TabsContent>
 
-              {/* Patch Only Ladders */}
-              <TabsContent value="patch-only" className="space-y-6">
-                {settings.default_pricing_mode === 'fixed' ? (
-                  <div>
-                    <Label className="text-base font-semibold mb-4 block">Fixed Prices ($/patch)</Label>
-                    <div className="grid grid-cols-6 gap-3">
-                      {['24', '48', '96', '144', '384', '768'].map(tier => (
-                        <div key={tier} className="space-y-2">
-                          <Label className="text-sm">{tier}+</Label>
-                          <Input
-                            type="number"
-                            step="0.50"
-                            value={settings.fixed_ladder_patch_only?.[tier] || 0}
-                            onChange={(e) => updateLadderField('fixed_ladder_patch_only', tier, e.target.value)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">These are the exact $/patch prices shown in quotes</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Default Profit Anchor ($)</Label>
-                      <Input
-                        type="number"
-                        step="0.50"
-                        value={settings.default_profit_anchor_patch_only || 2.00}
-                        onChange={(e) => updateField('default_profit_anchor_patch_only', e.target.value)}
-                      />
-                      <p className="text-xs text-gray-500">Target profit at 24+ tier (users can override per quote)</p>
-                    </div>
-                    <div>
-                      <Label className="text-base font-semibold mb-4 block">Profit Multipliers</Label>
-                      <div className="grid grid-cols-6 gap-3">
-                        {['24', '48', '96', '144', '384', '768'].map(tier => (
-                          <div key={tier} className="space-y-2">
-                            <Label className="text-sm">{tier}+</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={settings.profit_multipliers_patch_only?.[tier] || 1.00}
-                              onChange={(e) => updateLadderField('profit_multipliers_patch_only', tier, e.target.value)}
-                            />
-                          </div>
-                        ))}
+              {/* Patch Only Ladder */}
+              <TabsContent value="patch-only" className="space-y-4">
+                <div className="grid grid-cols-7 gap-2">
+                  {TIER_KEYS.map(tier => (
+                    <div key={tier} className="space-y-1">
+                      <Label className="text-xs font-semibold text-center block">{tier}</Label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                        <Input
+                          type="number"
+                          step="0.25"
+                          className="pl-5 text-center tabular-nums"
+                          value={settings?.published_ladder_patch_only?.[tier] || ''}
+                          onChange={(e) => updateLadderField('published_ladder_patch_only', tier, e.target.value)}
+                        />
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">Profit = anchor × multiplier. Lower multipliers give volume discounts.</p>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">Price per patch (no application)</p>
               </TabsContent>
             </Tabs>
           </CardContent>
