@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 // ============================================
-// INLINE PRICING ENGINE (to ensure it works)
+// PRICING ENGINE (Manual Yield Only)
 // ============================================
 
 function roundToCents(n) {
@@ -73,66 +73,63 @@ function calculateShopRate(shopSettings) {
   return roundToCents(requiredMonthly / billableHoursMonth)
 }
 
-function calculateYield(params) {
-  const { material, patchWidthInput, patchHeightInput, patchSizeMode, outlineAllowance, gap, border, wastePct, yieldMethod, manualYield } = params
-
-  let patchW = patchWidthInput || 3.25
-  let patchH = patchHeightInput || 2.25
-  
-  if (patchSizeMode === 'art') {
-    patchW += (outlineAllowance || 0.125)
-    patchH += (outlineAllowance || 0.125)
-  }
-
-  if (yieldMethod === 'manual' && manualYield && manualYield > 0) {
-    const effectiveYield = manualYield * (1 - (wastePct || 0) / 100)
-    return { bestYield: manualYield, effectiveYield: effectiveYield > 0 ? effectiveYield : 1 }
-  }
-
-  const sheetWidth = material?.sheet_width || 12
-  const sheetHeight = material?.sheet_height || 24
-  const gapVal = gap || 0.0625
-  const borderVal = border || 0.25
-
-  const usableW = sheetWidth - (2 * borderVal)
-  const usableH = sheetHeight - (2 * borderVal)
-
-  const countW = Math.floor((usableW + gapVal) / (patchW + gapVal))
-  const countH = Math.floor((usableH + gapVal) / (patchH + gapVal))
-  const yieldNormal = countW * countH
-
-  const countWRot = Math.floor((usableW + gapVal) / (patchH + gapVal))
-  const countHRot = Math.floor((usableH + gapVal) / (patchW + gapVal))
-  const yieldRotated = countWRot * countHRot
-
-  const bestYield = Math.max(yieldNormal, yieldRotated, 1)
-  const effectiveYield = bestYield * (1 - (wastePct || 0) / 100)
-  
-  return { bestYield, effectiveYield: effectiveYield > 0 ? effectiveYield : 1 }
-}
-
 function calculateCostAtQty(qty, params) {
-  const { material, effectiveYield, shopRatePerHour, machineMinutesPerSheet, cleanupMinutesPerSheet, applyMinutesPerHat, proofMinutes, setupMinutes, packingMinutes, hatsSuppliedBy, hatUnitCost, quoteType } = params
+  const { 
+    material, 
+    patchesPerSheet,
+    wastePct,
+    shopRatePerHour, 
+    machineMinutesPerSheet, 
+    cleanupMinutesPerSheet, 
+    applyMinutesPerHat, 
+    proofMinutes, 
+    setupMinutes, 
+    packingMinutes, 
+    hatsSuppliedBy, 
+    hatUnitCost, 
+    quoteType 
+  } = params
 
-  const sheets = Math.ceil(qty / effectiveYield)
+  // Apply waste to get effective yield
+  const effectiveYield = patchesPerSheet * (1 - (wastePct || 0) / 100)
+  
+  // Sheets needed (ceiling)
+  const sheets = Math.ceil(qty / Math.max(effectiveYield, 1))
+  
+  // Material cost
   const sheetCost = material?.sheet_cost || 7
   const materialCost = roundToCents(sheets * sheetCost)
 
+  // Blank cost (only if we supply hats for patch_press)
   let blankCost = 0
   if (quoteType === 'patch_press' && hatsSuppliedBy === 'us') {
     blankCost = roundToCents(qty * (hatUnitCost || 0))
   }
 
+  // Time calculation
   const sheetMinutes = (machineMinutesPerSheet + cleanupMinutesPerSheet) * sheets
   const applyMinutes = quoteType === 'patch_press' ? (applyMinutesPerHat * qty) : 0
   const fixedMinutes = proofMinutes + setupMinutes + packingMinutes
   const timeMins = sheetMinutes + applyMinutes + fixedMinutes
 
+  // Labor cost
   const laborCost = roundToCents((timeMins / 60) * shopRatePerHour)
+  
+  // Total cost
   const totalCost = roundToCents(materialCost + blankCost + laborCost)
   const costPerPiece = roundToCents(totalCost / qty)
 
-  return { qty, sheets, materialCost, blankCost, timeMins: roundToCents(timeMins), laborCost, totalCost, costPerPiece, effectiveYield }
+  return { 
+    qty, 
+    sheets, 
+    effectiveYield: roundToCents(effectiveYield),
+    materialCost, 
+    blankCost, 
+    timeMins: roundToCents(timeMins), 
+    laborCost, 
+    totalCost, 
+    costPerPiece 
+  }
 }
 
 function calculateWholesale(costPerPiece, pricingMethod, markupPct, marginPct) {
@@ -163,25 +160,14 @@ function getPublishedPrice(tierKey, publishedLadder, quoteType) {
 function computeQuote(quoteInputs, shopSettings, material) {
   const quoteType = quoteInputs.quote_type || 'patch_press'
   const qty = quoteInputs.qty || 144
+  const patchesPerSheet = quoteInputs.patches_per_sheet || 12
 
   const shopRatePerHour = calculateShopRate(shopSettings)
 
-  const { bestYield, effectiveYield } = calculateYield({
-    material,
-    patchWidthInput: quoteInputs.patch_width_input,
-    patchHeightInput: quoteInputs.patch_height_input,
-    patchSizeMode: quoteInputs.patch_size_mode,
-    outlineAllowance: quoteInputs.outline_allowance,
-    gap: quoteInputs.gap,
-    border: quoteInputs.border,
-    wastePct: quoteInputs.waste_pct,
-    yieldMethod: quoteInputs.yield_method,
-    manualYield: quoteInputs.manual_yield
-  })
-
   const costParams = {
     material,
-    effectiveYield,
+    patchesPerSheet,
+    wastePct: quoteInputs.waste_pct || 5,
     shopRatePerHour,
     machineMinutesPerSheet: quoteInputs.machine_minutes_per_sheet || 12,
     cleanupMinutesPerSheet: quoteInputs.cleanup_minutes_per_sheet || 5,
@@ -217,7 +203,7 @@ function computeQuote(quoteInputs, shopSettings, material) {
   const activeSubtotal = roundToCents(activePublishedPerPiece * qty)
   const activeTotal = roundToCents(activeSubtotal + activeSetupFee)
 
-  // TIER MATRIX
+  // TIER MATRIX (recompute cost at each tier start qty)
   const tiers = TIER_RANGES.map(tier => {
     const tierBreakdown = calculateCostAtQty(tier.startQty, costParams)
     const publishedPerPiece = getPublishedPrice(tier.key, publishedLadder, quoteType)
@@ -264,7 +250,7 @@ function computeQuote(quoteInputs, shopSettings, material) {
   const unitLabel = quoteType === 'patch_only' ? 'patch' : 'hat'
   const unitLabelPlural = quoteType === 'patch_only' ? 'patches' : 'hats'
   const materialName = material?.name || 'Leatherette'
-  const patchSize = `${quoteInputs.patch_width_input || 3.25}×${quoteInputs.patch_height_input || 2.25}`
+  const patchSize = `${quoteInputs.patch_width || 3.25}×${quoteInputs.patch_height || 2.25}`
   const turnaround = quoteInputs.turnaround_text || '5–7 business days'
   const tierPricesText = tiers.slice(1, 5).map(t => `${t.rangeLabel} ${formatMoney(t.publishedPerPiece)}`).join(' | ')
 
@@ -289,7 +275,7 @@ function computeQuote(quoteInputs, shopSettings, material) {
     tiers,
     customerView: { markupPct: customerMarkupPct, baseline: customerPriceBaseline, tiers: customerTiers },
     scripts: { sms: quoteSMS, dm: quoteDM, phone: quotePhone },
-    settings: { pricingMethod, markupPct, marginPct, bestYield, effectiveYield, shopRatePerHour }
+    settings: { pricingMethod, markupPct, marginPct, patchesPerSheet, shopRatePerHour }
   }
 }
 
@@ -314,15 +300,13 @@ export default function QuoteBuilder() {
     customer_id: null,
     qty: 144,
     patch_material_id: '',
-    patch_width_input: 3.25,
-    patch_height_input: 2.25,
-    patch_size_mode: 'overall',
-    outline_allowance: 0.125,
-    gap: 0.0625,
-    border: 0.25,
+    // Patch info (for scripts only)
+    patch_width: 3.25,
+    patch_height: 2.25,
+    // Manual yield - user enters this
+    patches_per_sheet: 12,
     waste_pct: 5,
-    yield_method: 'auto',
-    manual_yield: null,
+    // Time settings
     machine_minutes_per_sheet: 12,
     cleanup_minutes_per_sheet: 5,
     hats_supplied_by: 'customer',
@@ -361,10 +345,7 @@ export default function QuoteBuilder() {
           ...prev,
           quote_type: savedQuoteType || prev.quote_type,
           patch_material_id: mats[0]?.id || '',
-          gap: settings?.default_gap ?? prev.gap,
-          border: settings?.default_border ?? prev.border,
           waste_pct: settings?.default_waste_pct ?? prev.waste_pct,
-          outline_allowance: settings?.outline_allowance ?? prev.outline_allowance,
           apply_minutes_per_hat: settings?.default_apply_minutes_per_hat ?? prev.apply_minutes_per_hat,
           proof_minutes: settings?.default_proof_minutes ?? prev.proof_minutes,
           setup_minutes: settings?.default_setup_minutes ?? prev.setup_minutes,
@@ -489,7 +470,7 @@ export default function QuoteBuilder() {
       <div className="grid lg:grid-cols-5 gap-4">
         {/* LEFT: Inputs */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Quote Type + Qty */}
+          {/* Quote Type + Qty + Hats */}
           <Card>
             <CardContent className="pt-4 space-y-4">
               <div className="flex gap-4 flex-wrap">
@@ -530,7 +511,7 @@ export default function QuoteBuilder() {
                 )}
                 {formData.quote_type === 'patch_press' && formData.hats_supplied_by === 'us' && (
                   <div className="w-28">
-                    <Label className="text-sm">Hat Cost</Label>
+                    <Label className="text-sm">Hat Cost ($)</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -554,9 +535,12 @@ export default function QuoteBuilder() {
             </CardContent>
           </Card>
 
-          {/* Material + Size */}
+          {/* Material + Yield */}
           <Card>
-            <CardContent className="pt-4 space-y-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Material & Yield</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div>
                 <Label className="text-sm">Material</Label>
                 <Select value={formData.patch_material_id} onValueChange={(v) => updateField('patch_material_id', v)}>
@@ -568,102 +552,106 @@ export default function QuoteBuilder() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs">Width (in)</Label>
-                  <Input type="number" step="0.125" className="mt-1 text-right tabular-nums font-mono text-sm"
-                    value={formData.patch_width_input || ''}
-                    onChange={(e) => updateField('patch_width_input', parseFloat(e.target.value) || 0)} />
+                  <Label className="text-sm font-semibold">Patches per Sheet</Label>
+                  <p className="text-xs text-gray-500 mb-1">Enter how many patches fit on one sheet</p>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    className="text-right tabular-nums font-mono text-lg"
+                    value={formData.patches_per_sheet || ''}
+                    onChange={(e) => updateField('patches_per_sheet', parseInt(e.target.value) || 1)}
+                  />
                 </div>
                 <div>
-                  <Label className="text-xs">Height (in)</Label>
-                  <Input type="number" step="0.125" className="mt-1 text-right tabular-nums font-mono text-sm"
-                    value={formData.patch_height_input || ''}
-                    onChange={(e) => updateField('patch_height_input', parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Waste %</Label>
-                  <Input type="number" className="mt-1 text-right tabular-nums font-mono text-sm"
+                  <Label className="text-sm">Waste %</Label>
+                  <p className="text-xs text-gray-500 mb-1">Account for defects/misprints</p>
+                  <Input
+                    type="number"
+                    className="text-right tabular-nums font-mono"
                     value={formData.waste_pct || ''}
-                    onChange={(e) => updateField('waste_pct', parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Yield</Label>
-                  <Select value={formData.yield_method} onValueChange={(v) => updateField('yield_method', v)}>
-                    <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">Auto</SelectItem>
-                      <SelectItem value="manual">Manual</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onChange={(e) => updateField('waste_pct', parseFloat(e.target.value) || 0)}
+                  />
                 </div>
               </div>
-              {formData.yield_method === 'manual' && (
-                <div className="w-40">
-                  <Label className="text-xs">Patches/Sheet</Label>
-                  <Input type="number" className="mt-1 text-right tabular-nums font-mono text-sm"
-                    value={formData.manual_yield || ''}
-                    onChange={(e) => updateField('manual_yield', parseInt(e.target.value) || null)} />
+              {/* Patch size for scripts */}
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                <div>
+                  <Label className="text-xs text-gray-500">Patch Width (for scripts)</Label>
+                  <Input
+                    type="number"
+                    step="0.125"
+                    className="mt-1 text-right tabular-nums font-mono text-sm"
+                    value={formData.patch_width || ''}
+                    onChange={(e) => updateField('patch_width', parseFloat(e.target.value) || 0)}
+                  />
                 </div>
-              )}
+                <div>
+                  <Label className="text-xs text-gray-500">Patch Height (for scripts)</Label>
+                  <Input
+                    type="number"
+                    step="0.125"
+                    className="mt-1 text-right tabular-nums font-mono text-sm"
+                    value={formData.patch_height || ''}
+                    onChange={(e) => updateField('patch_height', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Advanced */}
+          {/* Time Settings (collapsible) */}
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
             <Card>
               <CollapsibleTrigger className="w-full">
                 <CardHeader className="py-3 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-medium">Advanced Settings</CardTitle>
+                  <CardTitle className="text-sm font-medium">Time Settings</CardTitle>
                   <ChevronDown className={`w-4 h-4 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
                 </CardHeader>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <CardContent className="pt-0 space-y-4">
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-xs">Gap (in)</Label>
-                      <Input type="number" step="0.0625" className="mt-1 text-right tabular-nums font-mono text-sm"
-                        value={formData.gap || ''} onChange={(e) => updateField('gap', parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Border (in)</Label>
-                      <Input type="number" step="0.0625" className="mt-1 text-right tabular-nums font-mono text-sm"
-                        value={formData.border || ''} onChange={(e) => updateField('border', parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Machine min</Label>
+                      <Label className="text-xs">Machine min/sheet</Label>
                       <Input type="number" className="mt-1 text-right tabular-nums font-mono text-sm"
-                        value={formData.machine_minutes_per_sheet || ''} onChange={(e) => updateField('machine_minutes_per_sheet', parseFloat(e.target.value) || 0)} />
+                        value={formData.machine_minutes_per_sheet || ''}
+                        onChange={(e) => updateField('machine_minutes_per_sheet', parseFloat(e.target.value) || 0)} />
                     </div>
                     <div>
-                      <Label className="text-xs">Cleanup min</Label>
+                      <Label className="text-xs">Cleanup min/sheet</Label>
                       <Input type="number" className="mt-1 text-right tabular-nums font-mono text-sm"
-                        value={formData.cleanup_minutes_per_sheet || ''} onChange={(e) => updateField('cleanup_minutes_per_sheet', parseFloat(e.target.value) || 0)} />
+                        value={formData.cleanup_minutes_per_sheet || ''}
+                        onChange={(e) => updateField('cleanup_minutes_per_sheet', parseFloat(e.target.value) || 0)} />
                     </div>
                   </div>
                   {formData.quote_type === 'patch_press' && (
-                    <div className="w-32">
+                    <div className="w-40">
                       <Label className="text-xs">Apply min/hat</Label>
                       <Input type="number" step="0.5" className="mt-1 text-right tabular-nums font-mono text-sm"
-                        value={formData.apply_minutes_per_hat || ''} onChange={(e) => updateField('apply_minutes_per_hat', parseFloat(e.target.value) || 0)} />
+                        value={formData.apply_minutes_per_hat || ''}
+                        onChange={(e) => updateField('apply_minutes_per_hat', parseFloat(e.target.value) || 0)} />
                     </div>
                   )}
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <Label className="text-xs">Proof min</Label>
                       <Input type="number" className="mt-1 text-right tabular-nums font-mono text-sm"
-                        value={formData.proof_minutes || ''} onChange={(e) => updateField('proof_minutes', parseFloat(e.target.value) || 0)} />
+                        value={formData.proof_minutes || ''}
+                        onChange={(e) => updateField('proof_minutes', parseFloat(e.target.value) || 0)} />
                     </div>
                     <div>
                       <Label className="text-xs">Setup min</Label>
                       <Input type="number" className="mt-1 text-right tabular-nums font-mono text-sm"
-                        value={formData.setup_minutes || ''} onChange={(e) => updateField('setup_minutes', parseFloat(e.target.value) || 0)} />
+                        value={formData.setup_minutes || ''}
+                        onChange={(e) => updateField('setup_minutes', parseFloat(e.target.value) || 0)} />
                     </div>
                     <div>
                       <Label className="text-xs">Packing min</Label>
                       <Input type="number" className="mt-1 text-right tabular-nums font-mono text-sm"
-                        value={formData.packing_minutes || ''} onChange={(e) => updateField('packing_minutes', parseFloat(e.target.value) || 0)} />
+                        value={formData.packing_minutes || ''}
+                        onChange={(e) => updateField('packing_minutes', parseFloat(e.target.value) || 0)} />
                     </div>
                   </div>
                 </CardContent>
@@ -755,11 +743,15 @@ export default function QuoteBuilder() {
                   {viewMode === 'shop' && (
                     <div className="text-xs text-gray-500 pt-2 border-t space-y-0.5">
                       <div className="flex justify-between">
-                        <span>Best Yield:</span>
-                        <span className="tabular-nums font-mono">{results.settings.bestYield} patches/sheet</span>
+                        <span>Patches/Sheet:</span>
+                        <span className="tabular-nums font-mono">{formData.patches_per_sheet}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Sheets:</span>
+                        <span>Effective Yield (after waste):</span>
+                        <span className="tabular-nums font-mono">{results.active.breakdown.effectiveYield}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Sheets Needed:</span>
                         <span className="tabular-nums font-mono">{results.active.breakdown.sheets}</span>
                       </div>
                       <div className="flex justify-between">
@@ -780,7 +772,6 @@ export default function QuoteBuilder() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {viewMode === 'shop' ? (
-                    // SHOP VIEW: Full breakdown per tier
                     results.tiers.map(tier => (
                       <div key={tier.key} className={`p-2 rounded border-2 ${tier.isActive ? 'bg-purple-50 border-purple-400' : 'bg-gray-50 border-gray-200'}`}>
                         <div className="flex items-center justify-between">
@@ -805,7 +796,6 @@ export default function QuoteBuilder() {
                       </div>
                     ))
                   ) : (
-                    // CUSTOMER VIEW
                     results.customerView.markupPct > 0 ? (
                       results.customerView.tiers.map(tier => (
                         <div key={tier.key} className={`p-2 rounded border-2 ${tier.isActive ? 'bg-blue-50 border-blue-400' : 'bg-gray-50 border-gray-200'}`}>
