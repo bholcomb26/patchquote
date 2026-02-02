@@ -286,7 +286,7 @@ export async function POST(request) {
       return handleCORS(NextResponse.json(data))
     }
 
-    // Create/calculate quote
+    // Create/calculate quote - unified calculation for both quote types
     if (path === 'quotes' || path === 'quotes/calculate') {
       // Get shop settings
       const { data: shopSettings } = await supabase
@@ -311,15 +311,8 @@ export async function POST(request) {
         return handleCORS(NextResponse.json({ error: 'Material not found' }, { status: 400 }))
       }
 
-      // Calculate all fields based on quote type
-      const quoteType = body.quote_type || 'patch_press'
-      let calculated
-      
-      if (quoteType === 'patch_only') {
-        calculated = calculatePatchOnlyQuote(body, shopSettings, material)
-      } else {
-        calculated = calculateCompleteQuote(body, shopSettings, material)
-      }
+      // Calculate using unified pricing engine
+      const calculated = calculateCompleteQuote(body, shopSettings, material)
 
       // If just calculating, return results
       if (path === 'quotes/calculate') {
@@ -328,9 +321,24 @@ export async function POST(request) {
 
       // Otherwise, save quote
       const quoteToSave = {
-        ...body,
-        ...calculated,
-        user_id: user.id
+        user_id: user.id,
+        customer_id: body.customer_id,
+        quote_type: body.quote_type || 'patch_press',
+        qty: body.qty,
+        patch_material_id: body.patch_material_id,
+        patch_width_input: body.patch_width_input,
+        patch_height_input: body.patch_height_input,
+        unit_price: calculated.publishedPricePerPiece,
+        true_cost_per_hat: calculated.trueCostPerPiece,
+        total_price: calculated.totalPrice,
+        setup_fee: calculated.setupFee,
+        best_yield: calculated.bestYield,
+        effective_yield: calculated.effectiveYield,
+        tier_prices_json: calculated.tier_prices_json,
+        quote_sms: calculated.quote_sms,
+        quote_dm: calculated.quote_dm,
+        quote_phone: calculated.quotePhone,
+        status: body.status || 'draft'
       }
 
       const { data, error } = await supabase
