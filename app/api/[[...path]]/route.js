@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServer, getUser } from '../../../lib/supabase-server'
 import {
   calculateCompleteQuote,
-  calculateFinishedHatQuote,
-  calculateProfitFirstAllocations,
-  calculateShopRates,
-  calculatePatchOnlyQuote
+  calculateProfitFirstAllocations
 } from '../../../lib/calculations'
 
 // CORS helper
