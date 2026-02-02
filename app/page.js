@@ -225,11 +225,11 @@ export default function App() {
           <div className="flex space-x-1 overflow-x-auto py-2">
             {[
               { id: 'dashboard', label: 'Overview', icon: DollarSign },
-              { id: 'quote-builder', label: 'Quote Builder', icon: Plus },
               { id: 'customers', label: 'Customers', icon: Users },
               { id: 'materials', label: 'Materials', icon: Package },
               { id: 'shop-settings', label: 'Shop Settings', icon: Settings },
-              { id: 'profit-first', label: 'Profit First', icon: FileText }
+              { id: 'profit-first', label: 'Profit First', icon: FileText },
+              { id: 'quote-builder', label: 'Quote Builder', icon: Plus }
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
