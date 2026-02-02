@@ -283,8 +283,8 @@ export default function QuoteBuilder() {
                   <Label>Quantity ({formData.quote_type === 'patch_only' ? 'patches' : 'hats'})</Label>
                   <Input
                     type="number"
-                    value={formData.qty}
-                    onChange={(e) => updateField('qty', parseInt(e.target.value))}
+                    value={formData.qty || ''}
+                    onChange={(e) => updateField('qty', parseInt(e.target.value) || 0)}
                   />
                 </div>
               </div>
@@ -546,8 +546,8 @@ export default function QuoteBuilder() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Setup Fee:</span>
-                      <span className={`font-semibold ${results.setup_fee === 0 ? 'text-green-600' : ''}`}>
-                        {results.setup_fee === 0 ? 'Waived' : `$${results.setup_fee.toFixed(2)}`}
+                      <span className={`font-semibold ${!results.setup_fee || results.setup_fee === 0 ? 'text-green-600' : ''}`}>
+                        {!results.setup_fee || results.setup_fee === 0 ? 'Waived' : `$${(results.setup_fee || 0).toFixed(2)}`}
                       </span>
                     </div>
                     <div className="flex justify-between text-base font-bold pt-2 border-t">
