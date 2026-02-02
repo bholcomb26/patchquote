@@ -170,7 +170,7 @@ export async function POST(request) {
     const path = searchParams.get('path') || ''
     const body = await request.json()
 
-    const supabase = createSupabaseServer()
+    const supabase = await createSupabaseServer()
     const user = await getUser()
 
     // Auth endpoints
