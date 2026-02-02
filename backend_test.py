@@ -736,10 +736,10 @@ def main():
     summary = tester.run_all_tests()
     
     # Exit with appropriate code
-    if summary['critical_issues'] > 0:
+    if summary and summary['critical_issues'] > 0:
         print("\n🚨 CRITICAL ISSUES DETECTED - Exiting with error code")
         sys.exit(2)
-    elif summary['failed'] > 0:
+    elif summary and summary['failed'] > 0:
         print("\n⚠️  Some tests failed - Exiting with warning code")
         sys.exit(1)
     else:
