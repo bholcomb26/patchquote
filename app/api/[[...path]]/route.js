@@ -3,7 +3,7 @@ import { createSupabaseServer, getUser } from '../../../lib/supabase-server'
 import {
   calculateCompleteQuote,
   calculateProfitFirstAllocations
-} from '../../../lib/calculations'
+} from '../../../lib/pricingEngine'
 
 // CORS helper
 function handleCORS(response) {
