@@ -433,41 +433,38 @@ class QuoteKitAPITester:
             )
     
     def test_quote_calculation_api(self):
-        """Test quote calculation API - the critical one that had stack overflow issues"""
-        print("\n=== Testing Quote Calculation API ===")
+        """Test quote calculation API with new unified pricing engine"""
+        print("\n=== Testing Quote Calculation API (Pricing Engine Overhaul) ===")
         
-        # Test quote calculation with realistic data
+        # Test quote calculation with the exact data from review request
         test_quote_data = {
-            "patch_material_id": "test-material-id",
-            "qty": 48,
-            "patch_width_input": 3.0,
-            "patch_height_input": 2.5,
-            "patch_size_mode": "art",
-            "outline_allowance": 0.125,
-            "yield_method": "auto",
-            "gap": 0.25,
-            "border": 0.5,
-            "waste_pct": 10,
+            "quote_type": "patch_press",
+            "qty": 144,
+            "patch_material_id": "test-material-id",  # Will be replaced with actual material ID
+            "patch_width_input": 3.25,
+            "patch_height_input": 2.25,
+            "waste_pct": 5,
             "machine_minutes_per_sheet": 12,
             "cleanup_minutes_per_sheet": 5,
-            "proof_minutes": 30,
-            "setup_minutes": 15,
-            "packing_minutes": 10,
             "apply_minutes_per_hat": 2,
-            "hats_supplied_by": "customer",
-            "hat_unit_cost": 0,
-            "target_margin_pct": 65,
-            "rush_pct": 0,
-            "shipping_charge": 0,
-            "turnaround_text": "5-7 business days",
-            "quote_type": "patch_press"
+            "proof_minutes": 5,
+            "setup_minutes": 5,
+            "packing_minutes": 5
         }
+        
+        # First, try to get materials to use a real material ID
+        materials_result = self.make_request('GET', 'patch-materials')
+        if not materials_result.get('error') and materials_result.get('status_code') == 200:
+            materials = materials_result.get('data', [])
+            if materials and len(materials) > 0:
+                test_quote_data["patch_material_id"] = materials[0].get('id', 'test-material-id')
+                print(f"Using material ID: {test_quote_data['patch_material_id']}")
         
         result = self.make_request('POST', 'quotes/calculate', test_quote_data)
         
         if result.get('error'):
             self.log_result(
-                "Quote Calculation - POST", 
+                "Pricing Engine - Request Failed", 
                 False, 
                 f"Request failed: {result['error']}", 
                 result
@@ -479,7 +476,7 @@ class QuoteKitAPITester:
         
         if status_code == 401:
             self.log_result(
-                "Quote Calculation - Auth", 
+                "Pricing Engine - Auth Required", 
                 True, 
                 "Returns 401 Unauthorized as expected (Supabase auth required)", 
                 {'status_code': status_code}
@@ -489,71 +486,55 @@ class QuoteKitAPITester:
             error_msg = data.get('error', 'Unknown error')
             if 'not found' in error_msg.lower() or 'settings' in error_msg.lower():
                 self.log_result(
-                    "Quote Calculation - Missing Data", 
+                    "Pricing Engine - Missing Data", 
                     True, 
                     f"Expected error due to missing data: {error_msg}", 
                     {'status_code': status_code}
                 )
             else:
                 self.log_result(
-                    "Quote Calculation - Bad Request", 
+                    "Pricing Engine - Bad Request", 
                     False, 
                     f"Unexpected 400 error: {error_msg}", 
                     {'status_code': status_code, 'response': data}
                 )
         elif status_code == 200:
-            # Check if response has expected calculation fields
-            expected_fields = ['unit_price', 'total_price', 'tier_prices_json']
-            has_expected = any(field in data for field in expected_fields)
-            
-            if has_expected:
-                self.log_result(
-                    "Quote Calculation - Success", 
-                    True, 
-                    "Quote calculation completed successfully", 
-                    {'status_code': status_code, 'has_pricing': has_expected}
-                )
-            else:
-                self.log_result(
-                    "Quote Calculation - Invalid Response", 
-                    False, 
-                    "Response missing expected calculation fields", 
-                    {'status_code': status_code, 'response': data}
-                )
+            # Test the new pricing engine response structure
+            self.validate_pricing_engine_response(data)
         elif status_code == 500:
             error_msg = data.get('error', 'Unknown server error')
             
             # Check for specific error patterns
             if 'stack' in error_msg.lower() or 'recursion' in error_msg.lower():
                 self.log_result(
-                    "Quote Calculation - Stack Overflow", 
+                    "Pricing Engine - Stack Overflow", 
                     False, 
                     f"CRITICAL: Stack overflow detected: {error_msg}", 
                     {'status_code': status_code, 'response': data}
                 )
             elif 'supabase' in error_msg.lower() or 'database' in error_msg.lower():
                 self.log_result(
-                    "Quote Calculation - DB Error", 
+                    "Pricing Engine - DB Error", 
                     True, 
                     f"Expected database error (Supabase not configured): {error_msg}", 
                     {'status_code': status_code}
                 )
             else:
                 self.log_result(
-                    "Quote Calculation - Server Error", 
+                    "Pricing Engine - Server Error", 
                     False, 
                     f"Server error: {error_msg}", 
                     {'status_code': status_code, 'response': data}
                 )
         else:
             self.log_result(
-                "Quote Calculation - Unexpected", 
+                "Pricing Engine - Unexpected Status", 
                 False, 
                 f"Unexpected status code: {status_code}", 
                 {'status_code': status_code, 'response': data}
             )
         
-        # Test with different quote types
+        # Test with patch_only quote type
         print("\n--- Testing Patch Only Quote Calculation ---")
         patch_only_data = test_quote_data.copy()
         patch_only_data['quote_type'] = 'patch_only'
@@ -576,6 +557,8 @@ class QuoteKitAPITester:
                     f"Patch only calculation handled (status: {status_code})", 
                     {'status_code': status_code}
                 )
+                if status_code == 200:
+                    self.validate_pricing_engine_response(result['data'], quote_type='patch_only')
             elif status_code == 500:
                 error_msg = result['data'].get('error', 'Unknown error')
                 if 'stack' in error_msg.lower():
@@ -592,6 +575,183 @@ class QuoteKitAPITester:
                         f"Expected server error: {error_msg}", 
                         {'status_code': status_code}
                     )
+    
+    def validate_pricing_engine_response(self, data, quote_type='patch_press'):
+        """Validate the new pricing engine response structure"""
+        print(f"\n--- Validating Pricing Engine Response for {quote_type} ---")
+        
+        # Check for active pricing fields
+        active_fields = ['publishedPerPiece', 'costPerPiece', 'wholesalePerPiece', 'profitPerPiece', 'marginPct']
+        active_data = data.get('active', {})
+        
+        missing_active = []
+        for field in active_fields:
+            if field not in active_data:
+                missing_active.append(field)
+        
+        if missing_active:
+            self.log_result(
+                f"Pricing Engine - Active Fields ({quote_type})", 
+                False, 
+                f"Missing active fields: {missing_active}", 
+                {'missing_fields': missing_active, 'active_data': active_data}
+            )
+        else:
+            # Validate profit calculation: profitPerPiece = publishedPerPiece - costPerPiece
+            published = active_data.get('publishedPerPiece', 0)
+            cost = active_data.get('costPerPiece', 0)
+            profit = active_data.get('profitPerPiece', 0)
+            
+            expected_profit = round((published - cost) * 100) / 100  # Round to cents
+            actual_profit = round(profit * 100) / 100
+            
+            profit_correct = abs(expected_profit - actual_profit) < 0.01
+            
+            self.log_result(
+                f"Pricing Engine - Active Fields ({quote_type})", 
+                True, 
+                f"All active pricing fields present", 
+                {
+                    'published': published, 
+                    'cost': cost, 
+                    'profit': profit,
+                    'profit_calculation_correct': profit_correct
+                }
+            )
+            
+            if not profit_correct:
+                self.log_result(
+                    f"Pricing Engine - Profit Calculation ({quote_type})", 
+                    False, 
+                    f"Profit calculation incorrect: expected {expected_profit}, got {actual_profit}", 
+                    {'expected': expected_profit, 'actual': actual_profit}
+                )
+            else:
+                self.log_result(
+                    f"Pricing Engine - Profit Calculation ({quote_type})", 
+                    True, 
+                    f"Profit calculation correct: {actual_profit}", 
+                    {'profit': actual_profit}
+                )
+        
+        # Check for tiers array
+        tiers = data.get('tiers', [])
+        if not isinstance(tiers, list) or len(tiers) != 7:
+            self.log_result(
+                f"Pricing Engine - Tiers Array ({quote_type})", 
+                False, 
+                f"Expected 7 tiers, got {len(tiers) if isinstance(tiers, list) else 'not array'}", 
+                {'tiers_count': len(tiers) if isinstance(tiers, list) else 0}
+            )
+        else:
+            # Validate tier costs differ
+            tier_costs = [tier.get('costPerPiece', 0) for tier in tiers if 'costPerPiece' in tier]
+            unique_costs = len(set(tier_costs))
+            
+            if unique_costs <= 1:
+                self.log_result(
+                    f"Pricing Engine - Tier Cost Variation ({quote_type})", 
+                    False, 
+                    f"All tier costs are the same: {tier_costs}", 
+                    {'tier_costs': tier_costs}
+                )
+            else:
+                self.log_result(
+                    f"Pricing Engine - Tier Cost Variation ({quote_type})", 
+                    True, 
+                    f"Tier costs vary correctly ({unique_costs} unique values)", 
+                    {'unique_costs': unique_costs, 'sample_costs': tier_costs[:3]}
+                )
+            
+            # Check each tier has required fields
+            tier_fields = ['costPerPiece', 'publishedPerPiece', 'profitPerPiece', 'marginPct']
+            for i, tier in enumerate(tiers):
+                missing_tier_fields = [field for field in tier_fields if field not in tier]
+                if missing_tier_fields:
+                    self.log_result(
+                        f"Pricing Engine - Tier {i+1} Fields ({quote_type})", 
+                        False, 
+                        f"Missing fields: {missing_tier_fields}", 
+                        {'tier_index': i, 'missing': missing_tier_fields}
+                    )
+                    break
+            else:
+                self.log_result(
+                    f"Pricing Engine - All Tier Fields ({quote_type})", 
+                    True, 
+                    f"All 7 tiers have required pricing fields", 
+                    {'tiers_validated': len(tiers)}
+                )
+        
+        # Check customerView.tiers
+        customer_view = data.get('customerView', {})
+        customer_tiers = customer_view.get('tiers', [])
+        
+        if not isinstance(customer_tiers, list):
+            self.log_result(
+                f"Pricing Engine - Customer Tiers ({quote_type})", 
+                False, 
+                f"Customer tiers not found or not array", 
+                {'customer_view': customer_view}
+            )
+        else:
+            self.log_result(
+                f"Pricing Engine - Customer Tiers ({quote_type})", 
+                True, 
+                f"Customer pricing matrix present ({len(customer_tiers)} tiers)", 
+                {'customer_tiers_count': len(customer_tiers)}
+            )
+        
+        # Check scripts
+        scripts = data.get('scripts', {})
+        script_types = ['sms', 'dm', 'phone']
+        missing_scripts = [script for script in script_types if script not in scripts or not scripts[script]]
+        
+        if missing_scripts:
+            self.log_result(
+                f"Pricing Engine - Quote Scripts ({quote_type})", 
+                False, 
+                f"Missing or empty scripts: {missing_scripts}", 
+                {'missing_scripts': missing_scripts}
+            )
+        else:
+            self.log_result(
+                f"Pricing Engine - Quote Scripts ({quote_type})", 
+                True, 
+                f"All quote scripts present (sms, dm, phone)", 
+                {'scripts_present': script_types}
+            )
+        
+        # Check formatMoney values (should have exactly 2 decimal places)
+        display = data.get('display', {})
+        money_fields = ['publishedPerPiece', 'costPerPiece', 'wholesalePerPiece', 'profitPerPiece', 'total']
+        
+        format_issues = []
+        for field in money_fields:
+            value = display.get(field, '')
+            if isinstance(value, str) and value.startswith('$'):
+                # Check if it has exactly 2 decimal places
+                if '.' in value:
+                    decimal_part = value.split('.')[-1]
+                    if len(decimal_part) != 2:
+                        format_issues.append(f"{field}: {value}")
+                else:
+                    format_issues.append(f"{field}: {value} (no decimals)")
+        
+        if format_issues:
+            self.log_result(
+                f"Pricing Engine - Money Formatting ({quote_type})", 
+                False, 
+                f"Incorrect decimal formatting: {format_issues}", 
+                {'format_issues': format_issues}
+            )
+        else:
+            self.log_result(
+                f"Pricing Engine - Money Formatting ({quote_type})", 
+                True, 
+                f"All money values formatted with 2 decimal places", 
+                {'money_fields_checked': len(money_fields)}
+            )
     
     def test_api_structure(self):
         """Test API structure and routing"""
