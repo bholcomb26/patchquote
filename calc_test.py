@@ -18,7 +18,7 @@ const {
   calculateAutoYield,
   calculateProfitTierPricing,
   calculateFixedTierPricing
-} = require('./lib/calculations.js');
+} = require('/app/lib/calculations.js');
 
 console.log('🧮 Testing Calculation Engine...');
 
