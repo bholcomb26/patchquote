@@ -405,7 +405,8 @@ class PricingEngineDirectTester {
       for (const field of moneyFields) {
         const value = display[field];
         if (typeof value === 'string' && value.startsWith('$')) {
-          if (!value.match(/\$\d+\.\d{2}$/)) {
+          // Allow for comma separators in larger amounts (e.g., $1,368.00)
+          if (!value.match(/\$[\d,]+\.\d{2}$/)) {
             formatIssues.push(`${field}: ${value}`);
           }
         }
