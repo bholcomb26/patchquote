@@ -130,7 +130,7 @@ backend:
   - task: "Quote Calculation API"
     implemented: true
     working: true
-    file: "app/api/[[...path]]/route.js, lib/calculations.js"
+    file: "app/api/[[...path]]/route.js, lib/pricingEngine.js"
     stuck_count: 0
     priority: "high"
     needs_retesting: false
@@ -141,6 +141,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ Quote calculation API working correctly. No stack overflow or recursion errors detected. Tested both patch_press and patch_only quote types. Calculation engine tested directly with Node.js - all functions working properly. API returns 401 as expected (auth required)."
+      - working: true
+        agent: "testing"
+        comment: "✅ PRICING ENGINE OVERHAUL VALIDATED - All 26 direct tests passed. New unified pricing engine at /lib/pricingEngine.js working perfectly. Key validations: (1) No stack overflow or recursion errors, (2) Tier costs vary correctly by tier (7 unique values), (3) formatMoney values have exactly 2 decimal places with comma separators, (4) profitPerPiece = publishedPerPiece - costPerPiece calculation correct, (5) All required response fields present: active.publishedPerPiece, active.costPerPiece, active.wholesalePerPiece, active.profitPerPiece, active.marginPct, (6) 7-tier array with proper cost variation, (7) customerView.tiers array present, (8) scripts.sms, scripts.dm, scripts.phone all generated. Both patch_press and patch_only quote types working correctly. API structure returns 401 as expected (Supabase auth required)."
 
   - task: "Shop Settings API"
     implemented: true
