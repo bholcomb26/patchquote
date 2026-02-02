@@ -22,7 +22,7 @@ export default function QuoteBuilder() {
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
-    quote_type: localStorage.getItem('default_quote_type') || 'patch_press',
+    quote_type: 'patch_press', // Will be updated from localStorage in useEffect
     customer_id: null,
     qty: 144,
     patch_material_id: '',
@@ -47,6 +47,16 @@ export default function QuoteBuilder() {
     shipping_charge: 0,
     tier_quantities: [24, 48, 96, 144, 384, 768]
   })
+
+  // Load saved quote_type from localStorage on client side only
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedQuoteType = localStorage.getItem('default_quote_type')
+      if (savedQuoteType) {
+        setFormData(prev => ({ ...prev, quote_type: savedQuoteType }))
+      }
+    }
+  }, [])
 
   useEffect(() => {
     loadData()
