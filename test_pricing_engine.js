@@ -486,10 +486,10 @@ const tester = new PricingEngineDirectTester();
 const summary = tester.runAllTests();
 
 // Exit with appropriate code
-if (summary.criticalIssues > 0) {
+if (summary && summary.criticalIssues > 0) {
   console.log("\n🚨 CRITICAL ISSUES DETECTED");
   process.exit(2);
-} else if (summary.failed > 0) {
+} else if (summary && summary.failed > 0) {
   console.log("\n⚠️  Some tests failed");
   process.exit(1);
 } else {
